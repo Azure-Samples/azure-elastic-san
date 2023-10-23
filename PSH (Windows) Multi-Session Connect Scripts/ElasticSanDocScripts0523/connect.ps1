@@ -97,7 +97,8 @@ foreach($volume in $volumeName) {
         Write-Error $_
         $invalidVolumes.Add($volume)
     }    
-}if ($invalidVolumes.Count -gt 0) {
+}
+if ($invalidVolumes.Count -gt 0) {
     # Terminate the script if any of the input volumes are invalid
     Write-Error "Invalid volumes: $($invalidVolumes -Join ",")" -ErrorAction Stop
 }
@@ -119,7 +120,7 @@ foreach($volume in $volumesToConnect) {
     iscsicli AddTarget $volume.TargetIQN * $volume.TargetHostName $volume.TargetPort * 0 * * * * * * * * * 0
     $LoginOptions = '0x00000002'
     for ($i = 0; $i -lt $volume.NumSession; $i++) {
-        iscsicli PersistentLoginTarget $volume.TargetIQN.ToLower() t $volume.TargetHostname.ToLower() $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions * * * * * * * * * 0
-        iscsicli LoginTarget $volume.TargetIQN t $volume.TargetHostName $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions * * * * * * * * * 0
+        iscsicli PersistentLoginTarget $volume.TargetIQN.ToLower() t $volume.TargetHostname.ToLower() $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions 1 1 * * * * * * * 0
+        iscsicli LoginTarget $volume.TargetIQN t $volume.TargetHostName $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions 1 1 * * * * * * * 0
     }
 }
