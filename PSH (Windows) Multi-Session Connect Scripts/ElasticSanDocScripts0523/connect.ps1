@@ -1,4 +1,34 @@
-﻿Param(
+﻿#Requires -Version 5.0 -Modules Az.Accounts, Az.ElasticSan
+#Requires -RunAsAdministrator
+
+<#
+    .SYNOPSIS
+    Connects iSCSI initiator to the Elastic SAN volume provided.
+    .DESCRIPTION
+    Connects iSCSI initiator to the Elastic SAN volume provided.
+    .PARAMETER SubscriptionID
+    Azure subscription ID in the format, 00000000-0000-0000-0000-000000000000
+    .PARAMETER ResourceGroupName
+    An Azure resource group name
+    .PARAMETER ElasticSanName
+    .PARAMETER VolumeGroupName
+    .PARAMETER VolumeName
+    .PARAMETER ElasticSanName
+    .PARAMETER VolumeGroupName
+    .PARAMETER NumSession
+    .PARAMETER -UseIdentity
+    .OUTPUTS
+    Text
+    .EXAMPLE
+    connect.ps1 -Subscription 00000000-0000-0000-0000-000000000000 -ResourceGroupName <RG Name> -ElasticSanName <Elastic SAN Name> -VolumeGroupName <Volume Group Name> -VolumeName <Volume Name> -NumSession <1-32> -UseIdentity
+    .LINK
+#>
+
+Param(
+    [Parameter(Mandatory, 
+    HelpMessage = "Subscription Id")]
+    [string]
+    $SubscriptionId,
     [Parameter(Mandatory, 
     HelpMessage = "Resource group name")]
     [string]
@@ -18,8 +48,17 @@
     [Parameter(HelpMessage = "Number of sessions to be connected for each volume. Default value is 32. Input value should be in range of 1-32.")]
     [ValidateRange(1,32)]
     [int]
-    $NumSession
+    $NumSession,
+    [switch]$UseIdentity
 )
+
+############### VERIFY AZURE LOGON AND SUBSCRIPTION ###################
+if ($UseIdentity) {
+    Add-AzAccount -Subscription $SubscriptionID -Identity -ErrorAction Stop     #A System Managed Identity needs to be created for the VM and given the Reader role for the Elastic SAN
+}
+$AzContext = Set-AzContext -SubscriptionId $SubscriptionID -ErrorAction Stop
+Write-Verbose "The PowerShell session needs to be logged in to Azure with an account with Reader access to the Elastic SAN or a Managed Identity can be used with the Reader role to the Elastic SAN."
+Write-Verbose ($AzContext)
 
 #################### DEFINITION OF VOLUME DATA ########################
 class VolumeData
@@ -80,7 +119,12 @@ if (($checkResult.InstallState -ne "Installed") -or $multipathWarning) {
 
 ##################### GATHER INFORMATION OF INPUT VOLUMES ####################
 # Get volume group resource to fail fast
-$vg = Get-AzElasticSanVolumeGroup -ResourceGroupName $ResourceGroupName -ElasticSanName $ElasticSanName -Name $VolumeGroupName -ErrorAction Stop
+try {
+    Get-AzElasticSanVolumeGroup -ResourceGroupName $ResourceGroupName -ElasticSanName $ElasticSanName -Name $VolumeGroupName | Out-Null
+}
+catch {
+    Write-Error "Cannot connect to the Elastic SAN. Make sure you are logged in to Azure or are using an identity." -ErrorAction Stop
+}
 
 $volumesToConnect= New-Object System.Collections.Generic.List[VolumeData]
 $invalidVolumes = New-Object System.Collections.Generic.List[string]
