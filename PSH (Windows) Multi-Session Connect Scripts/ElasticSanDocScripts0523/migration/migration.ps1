@@ -50,17 +50,17 @@ foreach ($volume in $volumes) {
             Write-Host "Volume $newvolname already exists. Skipping..." -ForegroundColor Yellow
             continue
         }
-        
+
         # Get the existing volume
-        $vol = Get-AzElasticSanVolume -SubscriptionId $subscriptionId -ResourceGroupName $rgname -ElasticSanName $esname -VolumeGroupName $vgname -Name $volname
+        $vol = Get-AzElasticSanVolume -SubscriptionId $subscriptionId -ResourceGroupName $rgname -ElasticSanName $esname -VolumeGroupName $vgname -Name $volname -ErrorAction Stop
 
         # Create a snapshot
         Write-Host "Creating a snapshot of the volume: $volname"
-        $snapshot = New-AzElasticSanVolumeSnapshot -SubscriptionId $subscriptionId -ResourceGroupName $rgname -ElasticSanName $esname -VolumeGroupName $vgname -Name $snapshotname -CreationDataSourceId $vol.Id
+        $snapshot = New-AzElasticSanVolumeSnapshot -SubscriptionId $subscriptionId -ResourceGroupName $rgname -ElasticSanName $esname -VolumeGroupName $vgname -Name $snapshotname -CreationDataSourceId $vol.Id -ErrorAction Stop
 
         # Create a new volume using the snapshot
         Write-Host "Creating a new volume from the snapshot"
-        New-AzElasticSanVolume -ElasticSanName $esname -ResourceGroupName $rgname -SubscriptionId $subscriptionId -VolumeGroupName $vgname -Name $newvolname -CreationDataSourceId $snapshot.Id -CreationDataCreateSource VolumeSnapshot -SizeGiB $vol.SizeGiB
+        New-AzElasticSanVolume -ElasticSanName $esname -ResourceGroupName $rgname -SubscriptionId $subscriptionId -VolumeGroupName $vgname -Name $newvolname -CreationDataSourceId $snapshot.Id -CreationDataCreateSource VolumeSnapshot -SizeGiB $vol.SizeGiB -ErrorAction Stop
 
         Write-Host "Successfully processed volume: $volname"
     } catch {
