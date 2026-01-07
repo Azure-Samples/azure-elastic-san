@@ -63,6 +63,7 @@ For guidance on disconnecting volumes, refer to the [Azure documentation](https:
   ```powershell
   Install-Module -Name Az -Repository PSGallery -Force
   ```
+- Ensure that you have the latest [Az.ElasticSan module](https://www.powershellgallery.com/packages/Az.ElasticSan/1.4.0) installed.
 - Update the Variables as mentioned below
 - Run the script from a PowerShell window inside the customer Windows VM 
 

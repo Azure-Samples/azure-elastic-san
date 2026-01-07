@@ -10,11 +10,6 @@ $volumes = @(
         newvolname = "<name of new volume>";
         snapshotname = "<name of snapshot>";
     }
-    @{
-        volname = "vol1";
-        newvolname = "newvol1";
-        snapshotname = "snapshotvol1";
-    }
     # Add more volumes as needed
 )
 

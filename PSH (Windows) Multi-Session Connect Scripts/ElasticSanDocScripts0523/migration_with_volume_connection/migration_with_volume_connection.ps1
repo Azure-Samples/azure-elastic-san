@@ -2,7 +2,18 @@ $vgname = "avs-gen10-vg1"
 $rgname = "avs-esan-testing-rg"
 $esname = "avs-gen10-testing" 
 $subscriptionId = "dd80b94e-0463-4a65-8d04-c94f403879dc"
+
+# Define the list of volumes to process
+$volumes = @(
+    @{
+        volname = "vol1";
+        newvolname = "volconnect";
+        snapshotname = "snapshot-volconnect";
+    }
  
+    # Add more volumes as needed
+)
+
 # Check dependency
 $title    = 'Confirm'
 $choices = @(
@@ -39,17 +50,6 @@ if (($checkResult.InstallState -ne "Installed") -or $multipathWarning) {
         exit
     }
 }
- 
-# Define the list of volumes to process
-$volumes = @(
-    @{
-        volname = "vol1";
-        newvolname = "volconnect";
-        snapshotname = "snapshot-volconnect";
-    }
- 
-    # Add more volumes as needed
-)
  
 # Prompt user to confirm volumes are disconnected with clear instructions
 Write-Host "IMPORTANT: Before continuing, please ensure that:" -ForegroundColor Yellow
