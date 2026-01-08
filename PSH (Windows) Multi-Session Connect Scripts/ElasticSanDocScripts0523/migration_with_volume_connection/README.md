@@ -2,6 +2,16 @@
 
 This PowerShell script automates the migration of Azure Elastic SAN volumes by creating snapshots, provisioning new volumes from those snapshots, and automatically connecting them with Multipath IO.
 
+## Important Safety Checks
+
+**⚠️ CRITICAL: Before running this script:**
+
+1. Disconnect all volumes from any attached systems
+2. Pause all I/O operations to these volumes
+3. Ensure no applications are accessing the volumes
+
+For guidance on disconnecting volumes, refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/storage/elastic-san/elastic-san-delete).
+
 ## Overview
 
 The script performs the following operations for each volume:
@@ -46,16 +56,6 @@ $volumes = @(
     # Add more volumes as needed
 )
 ```
-
-## Important Safety Checks
-
-**⚠️ CRITICAL: Before running this script:**
-
-1. Disconnect all volumes from any attached systems
-2. Pause all I/O operations to these volumes
-3. Ensure no applications are accessing the volumes
-
-For guidance on disconnecting volumes, refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/storage/elastic-san/elastic-san-delete).
 
 ## Usage
 - Install the Azure PowerShell module before running the script
