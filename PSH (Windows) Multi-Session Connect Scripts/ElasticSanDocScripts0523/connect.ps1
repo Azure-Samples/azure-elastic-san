@@ -121,6 +121,6 @@ foreach($volume in $volumesToConnect) {
     $LoginOptions = '0x00000002'
     for ($i = 0; $i -lt $volume.NumSession; $i++) {
         iscsicli PersistentLoginTarget $volume.TargetIQN.ToLower() t $volume.TargetHostname.ToLower() $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions 1 1 * * * * * * * 0
-        iscsicli LoginTarget $volume.TargetIQN t $volume.TargetHostName $volume.TargetPort Root\ISCSIPRT\0000_0 -1 * $LoginOptions 1 1 * * * * * * * 0
     }
 }
+
