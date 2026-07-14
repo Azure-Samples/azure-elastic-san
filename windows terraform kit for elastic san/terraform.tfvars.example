@@ -1,0 +1,28 @@
+# Example Terraform variables file with best practice settings
+# Copy this file to terraform.tfvars and customize as needed
+
+# Basic Configuration
+prefix              = "esan-demo"
+location           = "East US"
+resource_group_name = "rg-elastic-san-demo"
+
+# VM Configuration (Gen 5+ series recommended for Elastic SAN)
+vm_size        = "Standard_D48as_v7"  # High-performance storage workloads (48 vCPUs, 192 GB RAM)
+admin_username = "esanadmin"
+
+# Network Optimization (Best Practice: Enable for performance)
+enable_accelerated_networking = true
+
+# Elastic SAN Configuration
+elastic_san_base_size_tib = 20  # Base units of storage (TiB) - minimum 16 TiB recommended
+volume_size_gib          = 1024 # Volume size in GiB (1024 = 1 TiB)
+iscsi_sessions          = 32    # Maximum sessions for optimal performance
+
+# Tags
+tags = {
+  Environment   = "Demo"
+  Project       = "ElasticSAN-MPIO-Test"
+  Owner         = "Your Name"
+  Department    = "IT"
+  BestPractices = "Azure-Optimized"
+}
