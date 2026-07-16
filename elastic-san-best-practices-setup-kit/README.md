@@ -56,8 +56,8 @@ This configuration follows the official [Azure Elastic SAN best practices](https
 
 1. **Clone and Navigate**
    ```bash
-   git clone https://github.com/yuemlu_microsoft/Elastic-SAN-Terraform.git
-   cd Elastic-SAN-Terraform
+   git clone https://github.com/Azure-Samples/azure-elastic-san.git
+   cd azure-elastic-san/elastic-san-best-practices-setup-kit
    ```
 
 2. **Configure Variables**
