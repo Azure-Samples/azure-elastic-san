@@ -1,0 +1,27 @@
+# Terraform state files (contain sensitive data)
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Terraform plan files
+tfplan
+*.tfplan
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl
+
+# Terraform variable files with personal/sensitive values
+# Use terraform.tfvars.example as a template
+terraform.tfvars
+
+# Terraform log files
+tf_apply.log
+*.log
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
