@@ -1,4 +1,31 @@
-﻿Param(
+﻿#Requires -Version 5.0 -Modules Az.Accounts, Az.ElasticSan
+#Requires -RunAsAdministrator
+
+<#
+    .SYNOPSIS
+    Disconnects iSCSI initiator from the Elastic SAN volume provided.
+    .DESCRIPTION
+    Disconnects iSCSI initiator from the Elastic SAN volume provided.
+    .PARAMETER SubscriptionID
+    Azure subscription ID in the format, 00000000-0000-0000-0000-000000000000
+    .PARAMETER ResourceGroupName
+    An Azure resource group name
+    .PARAMETER ElasticSanName
+    .PARAMETER VolumeGroupName
+    .PARAMETER VolumeName
+    .PARAMETER -UseIdentity
+    .OUTPUTS
+    Text
+    .EXAMPLE
+    disconnect.ps1 -Subscription 00000000-0000-0000-0000-000000000000 -ResourceGroupName <RG Name> -ElasticSanName <Elastic SAN Name> -VolumeGroupName <Volume Group Name> -VolumeName <Volume Name> -UseIdentity
+    .LINK
+#>
+
+Param(
+    [Parameter(Mandatory, 
+    HelpMessage = "Subscription Id")]
+    [string]
+    $SubscriptionId,
     [Parameter(Mandatory,
     HelpMessage = "Resource group name")]
     [string]
@@ -14,7 +41,8 @@
     [Parameter(Mandatory,
     HelpMessage = "Volumes to be disconnected")]
     [string[]]
-    $VolumeName
+    $VolumeName,
+    [switch]$UseIdentity
 )
 
 $title    = 'Confirm'
@@ -28,6 +56,14 @@ $decision = $Host.UI.PromptForChoice($title, $question, $choices, 0)
 if ($decision -eq 1) {
     Exit
 }
+
+############### VERIFY AZURE LOGON AND SUBSCRIPTION ###################
+if ($UseIdentity) {
+    Add-AzAccount -Subscription $SubscriptionID -Identity -ErrorAction Stop     #A System Managed Identity needs to be created for the VM and given the Reader role for the Elastic SAN
+}
+$AzContext = Set-AzContext -SubscriptionId $SubscriptionID -ErrorAction Stop
+Write-Verbose "The PowerShell session needs to be logged in to Azure with an account with Reader access to the Elastic SAN or a Managed Identity can be used with the Reader role to the Elastic SAN."
+Write-Verbose ($AzContext)
 
 ################ Definition of VolumeData #################################
 class VolumeData
@@ -48,7 +84,12 @@ class VolumeData
 ############### Gather information of input volumes ########################
 
 # Get volume group resource to fail fast
-$vg = Get-AzElasticSanVolumeGroup -ResourceGroupName $ResourceGroupName -ElasticSanName $ElasticSanName -Name $VolumeGroupName -ErrorAction Stop
+try {
+    Get-AzElasticSanVolumeGroup -ResourceGroupName $ResourceGroupName -ElasticSanName $ElasticSanName -Name $VolumeGroupName | Out-Null
+}
+catch {
+    Write-Error "Cannot connect to the Elastic SAN. Make sure you are logged in to Azure or are using an identity." -ErrorAction Stop
+}
 
 $volumesToDisconnect= New-Object System.Collections.Generic.List[VolumeData]
 $invalidVolumes = New-Object System.Collections.Generic.List[string]
@@ -74,12 +115,12 @@ if ($invalidVolumes.Count -gt 0) {
 $persistentTargets = iscsicli ListPersistentTargets
 foreach($volume in $volumesToDisconnect) {
     $sessions = Get-IscsiSession | ?{$_.TargetNodeAddress -eq $volume.TargetIQN}
-    if ($sessions -eq $null) {
+    if ($null -eq $sessions) {
         Write-Host $volume.VolumeName [$($volume.TargetIQN)]: Skipped as this volume is not connected -ForegroundColor Magenta
         continue  
     }
 
-    Write-Host $volume.VolumeName [$($volume.TargetIQN)]: Disconncting volume -ForegroundColor Cyan
+    Write-Host $volume.VolumeName [$($volume.TargetIQN)]: Disconnecting volume -ForegroundColor Cyan
     # remove connected sessions 
     foreach ($session in $sessions) {
         iscsicli LogoutTarget $session.SessionIdentifier
