@@ -1,4 +1,4 @@
-import subprocess, sys, os, argparse, json, time
+import subprocess, sys, os, argparse, json, time, re
 # for compatibility between python2 and python3 
 if hasattr(__builtins__, 'raw_input'):
       input = raw_input
@@ -57,28 +57,57 @@ def get_iqns(subscription, resource_group_name, elastic_san_name, volume_group_n
     target_portal_port = storage_target["targetPortalPort"]
     return target_iqn, target_portal_hostname, target_portal_port
 
-# check if there are existing connections, if None then exit
-def check_connection(target_iqn, target_portal_hostname, target_portal_port):
-    command = "sudo iscsiadm -m session".split(' ')
+# Open-iSCSI returns 21 when there are no records or sessions for an operation.
+ISCSI_ERR_NO_OBJS_FOUND = 21
+
+
+def run_iscsiadm(arguments):
+    command = ["sudo", "iscsiadm"] + arguments
     p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    if "error" in err.decode("utf-8").lower():
-        raise Exception(err)
-    out = out.decode("utf-8")
-    return "No active sessions." not in out and "{}:{},-1 {}".format(target_portal_hostname, target_portal_port, target_iqn) in out
-        
-# disconnect all sessions
-def disconnect_volume(volume_name, target_iqn, target_portal_hostname, target_portal_port):    
-    print('{} [{}]: Disconnecting volume'.format(volume_name, target_iqn))
-    command = "sudo iscsiadm --mode node --target {} --portal {}:{} --logout".format(target_iqn, target_portal_hostname, target_portal_port).split(' ')
-    p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    if err:
-        raise Exception(err)
+    if p.returncode == ISCSI_ERR_NO_OBJS_FOUND:
+        return ""
+    if p.returncode != 0:
+        detail = err.decode("utf-8").strip() or out.decode("utf-8").strip()
+        raise Exception("{} failed: {}".format(
+            " ".join(command), detail or "exit code {}".format(p.returncode)
+        ))
+    return out.decode("utf-8")
+
+
+def get_matching_targets(target_iqn):
+    targets = set()
+    for mode, pattern in (
+        ("node", r"^\s*\S+,\S+\s+(\S+)(?:\s.*)?$"),
+        ("session", r"^\s*\S+:\s+\[\s*\d+\s*\]\s+\S+,\S+\s+(\S+)(?:\s.*)?$"),
+    ):
+        output = run_iscsiadm(["-m", mode])
+        for line in output.splitlines():
+            if not line.strip():
+                continue
+            match = re.match(pattern, line)
+            if match is None:
+                raise Exception("Cannot parse iscsiadm {} inventory: {!r}".format(mode, line))
+            name = match.group(1)
+            if name == target_iqn or name.startswith(target_iqn + ":az-"):
+                targets.add(name)
+    return sorted(targets)
+
+
+# Match target identities, not portals: nodes may use an FQDN or several VIPs.
+def disconnect_volume(volume_name, target_iqn, target_portal_hostname, target_portal_port):
+    targets = get_matching_targets(target_iqn)
+    if not targets:
+        print("{} [{}]: Skipped as this volume is not connected".format(volume_name, target_iqn))
+        return
+    for name in targets:
+        print('{} [{}]: Disconnecting volume and removing node records'.format(volume_name, name))
+        run_iscsiadm(["-m", "node", "-T", name, "-u"])
+        run_iscsiadm(["-m", "node", "-T", name, "-o", "delete"])
 
 if __name__ == "__main__":
     # confirm if want to continue disconnecting all sessions
-    value = input('\033[93m[Warning: Running this script will remove access to all the selected volumes, all existing sessions to these volumes will be disconnected. \nDo you wish to continue? [Y/Yes/N/No]:\033[00m')
+    value = input('\033[93m[Warning: Running this script will remove access to all the selected volumes, disconnect all their sessions, and delete their persistent node records across all portals (including zonal targets). \nDo you wish to continue? [Y/Yes/N/No]:\033[00m')
     while True:
         if value.lower() == 'yes' or value.lower() == 'y':
             break
@@ -109,9 +138,4 @@ if __name__ == "__main__":
 
     for volume_name in volume_names:
         target_iqn, target_hostname, target_port = get_iqns(subscription, resource_group_name, elastic_san_name, volume_group_name, volume_name)
-        # check connections, if not connected, then skip disconnection
-        connected = check_connection(target_iqn, target_hostname, target_port)
-        if not connected:
-            print("{} [{}]: Skipped as this volume is not connected".format(v.volume_name, v.target_iqn))
-            continue
         disconnect_volume(volume_name, target_iqn, target_hostname, target_port)
